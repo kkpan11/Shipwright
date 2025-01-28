@@ -8,7 +8,7 @@
 
 #include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
 
-#define FLAGS (ACTOR_FLAG_UPDATE_WHILE_CULLED | ACTOR_FLAG_NO_FREEZE_OCARINA)
+#define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_UPDATE_DURING_OCARINA)
 
 void ArrowLight_Init(Actor* thisx, PlayState* play);
 void ArrowLight_Destroy(Actor* thisx, PlayState* play);
@@ -195,12 +195,12 @@ void ArrowLight_Draw(Actor* thisx, PlayState* play) {
     Actor* tranform;
 
     Color_RGB8 primaryColor = {255, 255, 170};
-    if (CVarGetInteger("gCosmetics.Arrows_LightPrimary.Changed", 0)) {
-        primaryColor = CVarGetColor24("gCosmetics.Arrows_LightPrimary.Value", primaryColor);
+    if (CVarGetInteger(CVAR_COSMETIC("Arrows.LightPrimary.Changed"), 0)) {
+        primaryColor = CVarGetColor24(CVAR_COSMETIC("Arrows.LightPrimary.Value"), primaryColor);
     }
     Color_RGB8 secondaryColor = {255, 255, 0};
-    if (CVarGetInteger("gCosmetics.Arrows_LightSecondary.Changed", 0)) {
-        secondaryColor = CVarGetColor24("gCosmetics.Arrows_LightSecondary.Value", secondaryColor);
+    if (CVarGetInteger(CVAR_COSMETIC("Arrows.LightSecondary.Changed"), 0)) {
+        secondaryColor = CVarGetColor24(CVAR_COSMETIC("Arrows.LightSecondary.Value"), secondaryColor);
     }
 
     if ((arrow != NULL) && (arrow->actor.update != NULL) && (this->timer < 255)) {

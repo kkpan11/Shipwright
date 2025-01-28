@@ -8,7 +8,7 @@
 
 #include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
 
-#define FLAGS (ACTOR_FLAG_UPDATE_WHILE_CULLED | ACTOR_FLAG_NO_FREEZE_OCARINA)
+#define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_UPDATE_DURING_OCARINA)
 
 void ArrowIce_Init(Actor* thisx, PlayState* play);
 void ArrowIce_Destroy(Actor* thisx, PlayState* play);
@@ -197,12 +197,12 @@ void ArrowIce_Draw(Actor* thisx, PlayState* play) {
     EnArrow* arrow = (EnArrow*)this->actor.parent;
 
     Color_RGB8 primaryColor = {170, 255, 255};
-    if (CVarGetInteger("gCosmetics.Arrows_IcePrimary.Changed", 0)) {
-        primaryColor = CVarGetColor24("gCosmetics.Arrows_IcePrimary.Value", primaryColor);
+    if (CVarGetInteger(CVAR_COSMETIC("Arrows.IcePrimary.Changed"), 0)) {
+        primaryColor = CVarGetColor24(CVAR_COSMETIC("Arrows.IcePrimary.Value"), primaryColor);
     }
     Color_RGB8 secondaryColor = {0, 0, 255};
-    if (CVarGetInteger("gCosmetics.Arrows_IceSecondary.Changed", 0)) {
-        secondaryColor = CVarGetColor24("gCosmetics.Arrows_IceSecondary.Value", secondaryColor);
+    if (CVarGetInteger(CVAR_COSMETIC("Arrows.IceSecondary.Changed"), 0)) {
+        secondaryColor = CVarGetColor24(CVAR_COSMETIC("Arrows.IceSecondary.Value"), secondaryColor);
     }
 
     if ((arrow != NULL) && (arrow->actor.update != NULL) && (this->timer < 255)) {

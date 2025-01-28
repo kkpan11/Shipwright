@@ -1,4 +1,5 @@
 #include <libultraship/libultra.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include "z64.h"
@@ -22,6 +23,10 @@ u16 gAudioSEFlagSwapSource[64];
 u16 gAudioSEFlagSwapTarget[64];
 u8 gAudioSEFlagSwapMode[64];
 
+// Zbuffer and Color framebuffer
+u16 D_0E000000[SCREEN_WIDTH * SCREEN_HEIGHT];
+u16 D_0F000000[SCREEN_WIDTH * SCREEN_HEIGHT];
+
 u8 osAppNmiBuffer[2048];
 
 f32 qNaN0x10000 = 0x7F810000;
@@ -30,18 +35,6 @@ f32 qNaN0x10000 = 0x7F810000;
 //{
 //	__gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy);
 //}
-
-s32 osJamMesg(OSMesgQueue* mq, OSMesg msg, s32 flag)
-{
-}
-
-void osSetEventMesg(OSEvent e, OSMesgQueue* mq, OSMesg msg)
-{
-}
-
-void osViSetEvent(OSMesgQueue* mq, OSMesg msg, u32 retraceCount)
-{
-}
 
 OSId osGetThreadId(OSThread* thread)
 {
@@ -55,27 +48,7 @@ void osSetThreadPri(OSThread* thread, OSPri pri)
 {
 }
 
-s32 osSetTimer(OSTimer* timer, OSTime countdown, OSTime interval, OSMesgQueue* mq, OSMesg msg)
-{
-
-}
-
 void osCreatePiManager(OSPri pri, OSMesgQueue* cmdQ, OSMesg* cmdBuf, s32 cmdMsgCnt)
-{
-
-}
-
-void osCreateViManager(OSPri pri)
-{
-
-}
-
-s32 osMotorInit(OSMesgQueue* ctrlrqueue, OSPfs* pfs, s32 channel)
-{
-    return 0;
-}
-
-u32 osAiGetLength(void)
 {
 
 }
@@ -126,16 +99,6 @@ s32 osPfsFindFile(OSPfs* pfs, u16 companyCode, u32 gameCode, u8* gameName, u8* e
 }
 
 s32 osPfsAllocateFile(OSPfs* pfs, u16 companyCode, u32 gameCode, u8* gameName, u8* extName, s32 length, s32* fileNo)
-{
-
-}
-
-s32 osAiSetNextBuffer(void* buf, size_t size)
-{
-
-}
-
-s32 __osMotorAccess(OSPfs* pfs, u32 vibrate)
 {
 
 }
@@ -200,16 +163,6 @@ void osContGetQuery(OSContStatus* data)
 
 }
 
-void osViSwapBuffer(void* vaddr)
-{
-
-}
-
-void* osViGetNextFramebuffer()
-{
-
-}
-
 u32 __osGetFpcCsr()
 {
 	return 0;
@@ -240,11 +193,6 @@ OSThread* __osGetCurrFaultedThread(void)
 
 }
 
-void osCartRomInit()
-{
-
-}
-
 u32 osMemSize = 1024 * 1024 * 1024;
 
 void Audio_osInvalDCache(void* buf, s32 size)
@@ -261,11 +209,6 @@ void Audio_osWritebackDCache(void* mem, s32 size)
 s32 osAiSetFrequency(u32 freq)
 {
 	return 1;
-}
-
-s32 osEPiStartDma(OSPiHandle* handle, OSIoMesg* mb, s32 direction)
-{
-
 }
 
 void osInvalDCache(void* vaddr, s32 nbytes)
@@ -311,31 +254,6 @@ void __osSpSetStatus(u32 status)
 OSPiHandle* osDriveRomInit()
 {
 	
-}
-
-void osViSetMode(OSViMode* mode)
-{
-
-}
-
-void osViBlack(u8 active)
-{
-
-}
-
-void osViSetYScale(f32 scale)
-{
-
-}
-
-void osViSetXScale(f32 value)
-{
-
-}
-
-void osViSetSpecialFeatures(u32 func)
-{
-
 }
 
 void __osInitialize_common(void)
@@ -388,11 +306,6 @@ u32 osGetMemSize(void)
 s32 osEPiReadIo(OSPiHandle* handle, u32 devAddr, u32* data)
 {
 	return 0;
-}
-
-u32* osViGetCurrentFramebuffer(void)
-{
-
 }
 
 void osSpTaskYield(void)

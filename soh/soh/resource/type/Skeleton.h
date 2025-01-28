@@ -50,11 +50,11 @@ union SkeletonData {
     SkelCurveLimbList skelCurveLimbList;
 };
 
-class Skeleton : public LUS::Resource<SkeletonData> {
+class Skeleton : public Ship::Resource<SkeletonData> {
   public:
     using Resource::Resource;
 
-    Skeleton() : Resource(std::shared_ptr<LUS::ResourceInitData>()) {}
+    Skeleton() : Resource(std::shared_ptr<Ship::ResourceInitData>()) {}
 
     SkeletonData* GetPointer();
     size_t GetPointerSize();
@@ -86,8 +86,13 @@ class SkeletonPatcher {
     static void UnregisterSkeleton(SkelAnime* skelAnime);
     static void ClearSkeletons();
     static void UpdateSkeletons();
+    static void UpdateCustomSkeletons();
 
     static std::vector<SkeletonPatchInfo> skeletons;
+  private:
+    inline static const std::string sOtr = "__OTR__";
+    static void UpdateTunicSkeletons(SkeletonPatchInfo& skel);
+    static void UpdateCustomSkeletonFromPath(const std::string& skeletonPath, SkeletonPatchInfo& skel);
 };
 
 
