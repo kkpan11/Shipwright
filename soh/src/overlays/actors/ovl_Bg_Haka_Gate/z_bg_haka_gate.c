@@ -99,7 +99,7 @@ void BgHakaGate_Init(Actor* thisx, PlayState* play) {
             this->actionFunc = BgHakaGate_FalseSkull;
         }
         this->vScrollTimer = Rand_ZeroOne() * 20.0f;
-        thisx->flags |= ACTOR_FLAG_UPDATE_WHILE_CULLED;
+        thisx->flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED;
         if (Flags_GetSwitch(play, this->switchFlag)) {
             this->vFlameScale = 350;
         }
@@ -126,7 +126,7 @@ void BgHakaGate_Init(Actor* thisx, PlayState* play) {
                 this->actionFunc = BgHakaGate_DoNothing;
                 thisx->world.pos.y += 80.0f;
             } else {
-                thisx->flags |= ACTOR_FLAG_UPDATE_WHILE_CULLED;
+                thisx->flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED;
                 Actor_SetFocus(thisx, 30.0f);
                 this->actionFunc = BgHakaGate_GateWait;
             }
@@ -211,9 +211,9 @@ void BgHakaGate_StatueTurn(BgHakaGate* this, PlayState* play) {
     if (turnFinished) {
         player->stateFlags2 &= ~PLAYER_STATE2_MOVING_DYNAPOLY;
         this->vRotYDeg10 = (this->vRotYDeg10 + turnAngle) % 3600;
-        this->vTurnRateDeg10 = CVarGetInteger("gFasterBlockPush", 0) * 2;
+        this->vTurnRateDeg10 = CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) * 2;
         this->vTurnAngleDeg10 = 0;
-        this->vTimer = 5 - ((CVarGetInteger("gFasterBlockPush", 0) * 3) / 5);
+        this->vTimer = 5 - ((CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) * 3) / 5);
         this->actionFunc = BgHakaGate_StatueIdle;
         this->dyna.unk_150 = 0.0f;
     }
@@ -242,7 +242,7 @@ void BgHakaGate_FloorClosed(BgHakaGate* this, PlayState* play) {
                 sBgPoEventPuzzleState = SKULL_OF_TRUTH_FOUND;
                 this->actionFunc = BgHakaGate_DoNothing;
             } else {
-                func_80078884(NA_SE_SY_ERROR);
+                Sfx_PlaySfxCentered(NA_SE_SY_ERROR);
                 Audio_PlayActorSound2(&this->dyna.actor, NA_SE_EV_GROUND_GATE_OPEN);
                 func_8003EBF8(play, &play->colCtx.dyna, this->dyna.bgId);
                 this->vTimer = 60;
@@ -276,7 +276,7 @@ void BgHakaGate_GateWait(BgHakaGate* this, PlayState* play) {
 void BgHakaGate_GateOpen(BgHakaGate* this, PlayState* play) {
     if (Math_StepToF(&this->dyna.actor.world.pos.y, this->dyna.actor.home.pos.y + 80.0f, 1.0f)) {
         Audio_PlayActorSound2(&this->dyna.actor, NA_SE_EV_METALDOOR_STOP);
-        this->dyna.actor.flags &= ~ACTOR_FLAG_UPDATE_WHILE_CULLED;
+        this->dyna.actor.flags &= ~ACTOR_FLAG_UPDATE_CULLING_DISABLED;
         this->actionFunc = BgHakaGate_DoNothing;
     } else {
         func_8002F974(&this->dyna.actor, NA_SE_EV_METALDOOR_SLIDE - SFX_FLAG);
@@ -294,9 +294,9 @@ void BgHakaGate_FalseSkull(BgHakaGate* this, PlayState* play) {
         Math_StepToS(&this->vFlameScale, 350, 20);
     }
     if (play->actorCtx.lensActive) {
-        this->dyna.actor.flags |= ACTOR_FLAG_LENS;
+        this->dyna.actor.flags |= ACTOR_FLAG_REACT_TO_LENS;
     } else {
-        this->dyna.actor.flags &= ~ACTOR_FLAG_LENS;
+        this->dyna.actor.flags &= ~ACTOR_FLAG_REACT_TO_LENS;
     }
 }
 
@@ -345,7 +345,7 @@ void BgHakaGate_Draw(Actor* thisx, PlayState* play) {
     BgHakaGate* this = (BgHakaGate*)thisx;
     MtxF currentMtxF;
 
-    if (CHECK_FLAG_ALL(thisx->flags, ACTOR_FLAG_LENS)) {
+    if (CHECK_FLAG_ALL(thisx->flags, ACTOR_FLAG_REACT_TO_LENS)) {
         Gfx_DrawDListXlu(play, object_haka_objects_DL_00F1B0);
     } else {
         Gfx_SetupDL_25Opa(play->state.gfxCtx);

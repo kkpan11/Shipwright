@@ -2,6 +2,13 @@
 #include "Skeleton.h"
 #include "soh/OTRGlobals.h"
 #include "libultraship/libultraship.h"
+#include <soh_assets.h>
+#include <objects/object_link_child/object_link_child.h>
+#include <objects/object_link_boy/object_link_boy.h>
+
+extern "C" SaveContext gSaveContext;
+extern "C" u16 gEquipMasks[4];
+extern "C" u8 gEquipShifts[4];
 
 namespace SOH {
 SkeletonData* Skeleton::GetPointer() {
@@ -36,9 +43,9 @@ void SkeletonPatcher::RegisterSkeleton(std::string& path, SkelAnime* skelAnime) 
     }
 
     // Determine if we're using an alternate skeleton
-    if (path.starts_with(LUS::IResource::gAltAssetPrefix)) {
-        info.vanillaSkeletonPath = path.substr(LUS::IResource::gAltAssetPrefix.length(),
-                                               path.size() - LUS::IResource::gAltAssetPrefix.length());
+    if (path.starts_with(Ship::IResource::gAltAssetPrefix)) {
+        info.vanillaSkeletonPath = path.substr(Ship::IResource::gAltAssetPrefix.length(),
+                                               path.size() - Ship::IResource::gAltAssetPrefix.length());
     } else {
         info.vanillaSkeletonPath = path;
     }
@@ -65,18 +72,106 @@ void SkeletonPatcher::ClearSkeletons()
 }
 
 void SkeletonPatcher::UpdateSkeletons() {
-    bool isHD = CVarGetInteger("gAltAssets", 0);
+    auto resourceMgr = Ship::Context::GetInstance()->GetResourceManager();
+    bool isAlt = resourceMgr->IsAltAssetsEnabled();
     for (auto skel : skeletons) {
         Skeleton* newSkel =
-            (Skeleton*)LUS::Context::GetInstance()->GetResourceManager()
-                ->LoadResource((isHD ? LUS::IResource::gAltAssetPrefix : "") + skel.vanillaSkeletonPath, true)
-                .get();
+            (Skeleton*)resourceMgr->LoadResource((isAlt ? Ship::IResource::gAltAssetPrefix : "") + skel.vanillaSkeletonPath, true).get();
 
         if (newSkel != nullptr) {
             skel.skelAnime->skeleton = newSkel->skeletonData.skeletonHeader.segment;
             uintptr_t skelPtr = (uintptr_t)newSkel->GetPointer();
             memcpy(&skel.skelAnime->skeletonHeader, &skelPtr, sizeof(uintptr_t)); // Dumb thing that needs to be done because cast is not cooperating
         }
+    }
+}
+
+void SkeletonPatcher::UpdateCustomSkeletons() {
+    for (auto skel : skeletons) {
+        UpdateTunicSkeletons(skel);
+    }
+}
+
+void SkeletonPatcher::UpdateTunicSkeletons(SkeletonPatchInfo& skel) {
+    std::string skeletonPath = "";
+
+    // Check if this is one of Link's skeletons
+    if (sOtr + skel.vanillaSkeletonPath == std::string(gLinkAdultSkel)) {
+        // Check what Link's current tunic is
+        switch (TUNIC_EQUIP_TO_PLAYER(CUR_EQUIP_VALUE(EQUIP_TYPE_TUNIC))) {
+            case PLAYER_TUNIC_KOKIRI:
+                skeletonPath = std::string(gLinkAdultKokiriTunicSkel).substr(sOtr.length());
+                break;
+            case PLAYER_TUNIC_GORON:
+                skeletonPath = std::string(gLinkAdultGoronTunicSkel).substr(sOtr.length());
+                break;
+            case PLAYER_TUNIC_ZORA:
+                skeletonPath = std::string(gLinkAdultZoraTunicSkel).substr(sOtr.length());
+                break;
+            default:
+                return;
+        }
+
+        UpdateCustomSkeletonFromPath(skeletonPath, skel);
+    } else if (sOtr + skel.vanillaSkeletonPath == std::string(gLinkChildSkel)) {
+        // Check what Link's current tunic is
+        switch (TUNIC_EQUIP_TO_PLAYER(CUR_EQUIP_VALUE(EQUIP_TYPE_TUNIC))) {
+            case PLAYER_TUNIC_KOKIRI:
+                skeletonPath = std::string(gLinkChildKokiriTunicSkel).substr(sOtr.length());
+                break;
+            case PLAYER_TUNIC_GORON:
+                skeletonPath = std::string(gLinkChildGoronTunicSkel).substr(sOtr.length());
+                break;
+            case PLAYER_TUNIC_ZORA:
+                skeletonPath = std::string(gLinkChildZoraTunicSkel).substr(sOtr.length());
+                break;
+            default:
+                return;
+        }
+
+        UpdateCustomSkeletonFromPath(skeletonPath, skel);
+    }
+}
+
+void SkeletonPatcher::UpdateCustomSkeletonFromPath(const std::string& skeletonPath, SkeletonPatchInfo& skel) {
+    Skeleton* newSkel = nullptr;
+    Skeleton* altSkel = nullptr;
+    auto resourceMgr = Ship::Context::GetInstance()->GetResourceManager();
+    bool isAlt = resourceMgr->IsAltAssetsEnabled();
+
+    // If alt assets are on, look for alt tagged skeletons
+    if (isAlt) {
+        altSkel = 
+            (Skeleton*)Ship::Context::GetInstance()
+                ->GetResourceManager()
+                ->LoadResource(Ship::IResource::gAltAssetPrefix + skeletonPath, true)
+                .get();
+
+        // Override non-alt skeleton if necessary
+        if (altSkel != nullptr) {
+            newSkel = altSkel;
+        }
+    }
+
+    // Load new skeleton based on the custom model if it exists
+    if (altSkel == nullptr) {
+        newSkel = 
+            (Skeleton*)Ship::Context::GetInstance()
+                ->GetResourceManager()
+                ->LoadResource(skeletonPath, true)
+                .get();
+    }
+
+    // Change back to the original skeleton if no skeleton's were found
+    if (newSkel == nullptr && skeletonPath != skel.vanillaSkeletonPath) {
+        UpdateCustomSkeletonFromPath(skel.vanillaSkeletonPath, skel);
+        return;
+    }
+
+    if (newSkel != nullptr) {
+        skel.skelAnime->skeleton = newSkel->skeletonData.skeletonHeader.segment;
+        uintptr_t skelPtr = (uintptr_t)newSkel->GetPointer();
+        memcpy(&skel.skelAnime->skeletonHeader, &skelPtr, sizeof(uintptr_t));
     }
 }
 } // namespace SOH

@@ -2,7 +2,7 @@
 #include "overlays/actors/ovl_En_Bom/z_en_bom.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 
-#define FLAGS ACTOR_FLAG_UPDATE_WHILE_CULLED
+#define FLAGS ACTOR_FLAG_UPDATE_CULLING_DISABLED
 
 #define BOMBCHU_SCALE 0.01f
 
@@ -139,7 +139,7 @@ void EnBomChu_UpdateFloorPoly(EnBomChu* this, CollisionPoly* floorPoly, PlayStat
     f32 normDotUp;
     MtxF mf;
 
-    if (CVarGetInteger("gBombchusOOB", 0) && floorPoly == NULL) {
+    if (CVarGetInteger(CVAR_ENHANCEMENT("BombchusOOB"), 0) && floorPoly == NULL) {
         EnBomChu_Explode(this, play);
         return;
     }
@@ -197,8 +197,8 @@ void EnBomChu_UpdateFloorPoly(EnBomChu* this, CollisionPoly* floorPoly, PlayStat
 
             // A hack for preventing bombchus from sticking to ledges.
             // The visual rotation reverts the sign inversion (shape.rot.x = -world.rot.x).
-            // The better fix would be making func_8002D908 compute XYZ velocity better,
-            // or not using it and make the bombchu compute its own velocity.
+            // The better fix would be making Actor_UpdateVelocityXYZ compute XYZ velocity
+            // better, or not using it and make the bombchu compute its own velocity.
             this->actor.world.rot.x = -this->actor.world.rot.x;
         }
     }
@@ -240,7 +240,7 @@ void EnBomChu_WaitForRelease(EnBomChu* this, PlayState* play) {
         //! @bug there is no NULL check on the floor poly.  If the player is out of bounds the floor poly will be NULL
         //! and will cause a crash inside this function.
         EnBomChu_UpdateFloorPoly(this, this->actor.floorPoly, play);
-        this->actor.flags |= ACTOR_FLAG_TARGETABLE; // make chu targetable
+        this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED; // make chu targetable
         func_8002F850(play, &this->actor);
         this->actionFunc = EnBomChu_Move;
     }
@@ -428,7 +428,7 @@ void EnBomChu_Update(Actor* thisx, PlayState* play2) {
     }
 
     this->actionFunc(this, play);
-    func_8002D97C(&this->actor);
+    Actor_MoveXYZ(&this->actor);
 
     this->collider.elements[0].dim.worldSphere.center.x = this->actor.world.pos.x;
     this->collider.elements[0].dim.worldSphere.center.y = this->actor.world.pos.y;
@@ -491,7 +491,7 @@ void EnBomChu_Draw(Actor* thisx, PlayState* play) {
     f32 colorIntensity;
     s32 blinkHalfPeriod;
     s32 blinkTime;
-    Color_RGB8 BombchuCol = CVarGetColor24("gBombTrailCol", BombchuColorOriginal);
+    Color_RGB8 BombchuCol = CVarGetColor24(CVAR_COSMETIC("Trails.Bombchu.Value"), BombchuColorOriginal);
 
     OPEN_DISPS(play->state.gfxCtx);
 
@@ -515,8 +515,8 @@ void EnBomChu_Draw(Actor* thisx, PlayState* play) {
 
     colorIntensity = blinkTime / (f32)blinkHalfPeriod;
 
-    if (CVarGetInteger("gCosmetics.Equipment_ChuBody.Changed", 0)) {
-        Color_RGB8 color = CVarGetColor24("gCosmetics.Equipment_ChuBody.Value", (Color_RGB8){ 209.0f, 34.0f, -35.0f });
+    if (CVarGetInteger(CVAR_COSMETIC("Equipment.ChuBody.Changed"), 0)) {
+        Color_RGB8 color = CVarGetColor24(CVAR_COSMETIC("Equipment.ChuBody.Value"), (Color_RGB8){ 209.0f, 34.0f, -35.0f });
         gDPSetEnvColor(POLY_OPA_DISP++, (colorIntensity * color.r), (colorIntensity * color.g),
                    (colorIntensity * color.b), 255);
     } else {

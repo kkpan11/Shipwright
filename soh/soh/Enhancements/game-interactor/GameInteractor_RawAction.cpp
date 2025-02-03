@@ -8,6 +8,7 @@
 extern "C" {
 #include "variables.h"
 #include "macros.h"
+#include "soh/cvar_prefixes.h"
 #include "functions.h"
 extern PlayState* gPlayState;
 }
@@ -205,6 +206,23 @@ void GameInteractor::RawAction::UnsetSceneFlag(int16_t sceneNum, int16_t flagTyp
     }
 };
 
+bool GameInteractor::RawAction::CheckFlag(int16_t flagType, int16_t flag) {
+    switch (flagType) {
+        case FlagType::FLAG_EVENT_CHECK_INF:
+            return Flags_GetEventChkInf(flag);
+        case FlagType::FLAG_ITEM_GET_INF:
+            return Flags_GetItemGetInf(flag);
+        case FlagType::FLAG_INF_TABLE:
+            return Flags_GetInfTable(flag);
+        case FlagType::FLAG_EVENT_INF:
+            return Flags_GetEventInf(flag);
+        case FlagType::FLAG_RANDOMIZER_INF:
+            return Flags_GetRandomizerInf(static_cast<RandomizerInf>(flag));
+        case FlagType::FLAG_GS_TOKEN:
+            return GET_GS_FLAGS((flag & 0x1F00) >> 8);
+    }
+}
+
 void GameInteractor::RawAction::SetFlag(int16_t flagType, int16_t flag) {
     switch (flagType) {
         case FlagType::FLAG_EVENT_CHECK_INF:
@@ -220,7 +238,12 @@ void GameInteractor::RawAction::SetFlag(int16_t flagType, int16_t flag) {
             gSaveContext.eventInf[flag >> 4] |= (1 << (flag & 0xF));
             break;
         case FlagType::FLAG_RANDOMIZER_INF:
-            gSaveContext.randomizerInf[flag >> 4] |= (1 << (flag & 0xF));
+            if (!IS_RANDO) {
+                LUSLOG_ERROR("Tried to set randomizerInf flag outside of rando (%d)", flag);
+                assert(false);
+                break;
+            }
+            gSaveContext.ship.randomizerInf[flag >> 4] |= (1 << (flag & 0xF));
             break;
         case FlagType::FLAG_GS_TOKEN:
             SET_GS_FLAGS((flag & 0x1F00) >> 8, flag & 0xFF);
@@ -243,7 +266,12 @@ void GameInteractor::RawAction::UnsetFlag(int16_t flagType, int16_t flag) {
             gSaveContext.eventInf[flag >> 4] &= ~(1 << (flag & 0xF));
             break;
         case FlagType::FLAG_RANDOMIZER_INF:
-            gSaveContext.randomizerInf[flag >> 4] &= ~(1 << (flag & 0xF));
+            if (!IS_RANDO) {
+                LUSLOG_ERROR("Tried to unset randomizerInf flag outside of rando (%d)", flag);
+                assert(false);
+                break;
+            }
+            gSaveContext.ship.randomizerInf[flag >> 4] &= ~(1 << (flag & 0xF));
             break;
     }
 };
@@ -324,7 +352,7 @@ void GameInteractor::RawAction::UpdateActor(void* refActor) {
 }
 
 void GameInteractor::RawAction::TeleportPlayer(int32_t nextEntrance) {
-    Audio_PlaySoundGeneral(NA_SE_EN_GANON_LAUGH, &D_801333D4, 4, &D_801333E0, &D_801333E0, &D_801333E8);
+    Audio_PlaySoundGeneral(NA_SE_EN_GANON_LAUGH, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale, &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
     gPlayState->nextEntranceIndex = nextEntrance;
     gPlayState->transitionTrigger = TRANS_TRIGGER_START;
     gPlayState->transitionType = TRANS_TYPE_FADE_BLACK;
@@ -353,19 +381,19 @@ void GameInteractor::RawAction::SetTimeOfDay(uint32_t time) {
 }
 
 void GameInteractor::RawAction::SetCollisionViewer(bool active) {
-    CVarSetInteger("gColViewerEnabled", active);
-    CVarSetInteger("gColViewerDecal", active);
+    CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.Enabled"), active);
+    CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.Decal"), active);
     
     if (active) {
-        CVarSetInteger("gColViewerScene", COLVIEW_TRANSPARENT);
-        CVarSetInteger("gColViewerBgActors", COLVIEW_TRANSPARENT);
-        CVarSetInteger("gColViewerColCheck", COLVIEW_TRANSPARENT);
-        CVarSetInteger("gColViewerWaterbox", COLVIEW_TRANSPARENT);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.Scene"), COLVIEW_TRANSPARENT);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.BGActors"), COLVIEW_TRANSPARENT);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.ColCheck"), COLVIEW_TRANSPARENT);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.Waterbox"), COLVIEW_TRANSPARENT);
     } else {
-        CVarSetInteger("gColViewerScene", COLVIEW_DISABLED);
-        CVarSetInteger("gColViewerBgActors", COLVIEW_DISABLED);
-        CVarSetInteger("gColViewerColCheck", COLVIEW_DISABLED);
-        CVarSetInteger("gColViewerWaterbox", COLVIEW_DISABLED);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.Scene"), COLVIEW_DISABLED);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.BGActors"), COLVIEW_DISABLED);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.ColCheck"), COLVIEW_DISABLED);
+        CVarSetInteger(CVAR_DEVELOPER_TOOLS("ColViewer.Waterbox"), COLVIEW_DISABLED);
     }
 }
 
@@ -428,55 +456,55 @@ void GameInteractor::RawAction::SetCosmeticsColor(uint8_t cosmeticCategory, uint
 
     switch (cosmeticCategory) { 
         case GI_COSMETICS_TUNICS:
-            CVarSetColor("gCosmetics.Link_KokiriTunic.Value", newColor);
-            CVarSetInteger("gCosmetics.Link_KokiriTunic.Changed", 1);
-            CVarSetColor("gCosmetics.Link_GoronTunic.Value", newColor);
-            CVarSetInteger("gCosmetics.Link_GoronTunic.Changed", 1);
-            CVarSetColor("gCosmetics.Link_ZoraTunic.Value", newColor);
-            CVarSetInteger("gCosmetics.Link_ZoraTunic.Changed", 1);
+            CVarSetColor(CVAR_COSMETIC("Link.KokiriTunic.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Link.KokiriTunic.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Link.GoronTunic.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Link.GoronTunic.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Link.ZoraTunic.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Link.ZoraTunic.Changed"), 1);
             break;
         case GI_COSMETICS_NAVI:
-            CVarSetColor("gCosmetics.Navi_EnemyPrimary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_EnemyPrimary.Changed", 1);
-            CVarSetColor("gCosmetics.Navi_EnemySecondary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_EnemySecondary.Changed", 1);
-            CVarSetColor("gCosmetics.Navi_IdlePrimary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_IdlePrimary.Changed", 1);
-            CVarSetColor("gCosmetics.Navi_IdleSecondary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_IdleSecondary.Changed", 1);
-            CVarSetColor("gCosmetics.Navi_NPCPrimary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_NPCPrimary.Changed", 1);
-            CVarSetColor("gCosmetics.Navi_NPCSecondary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_NPCSecondary.Changed", 1);
-            CVarSetColor("gCosmetics.Navi_PropsPrimary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_PropsPrimary.Changed", 1);
-            CVarSetColor("gCosmetics.Navi_PropsSecondary.Value", newColor);
-            CVarSetInteger("gCosmetics.Navi_PropsSecondary.Changed", 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.EnemyPrimary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.EnemyPrimary.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.EnemySecondary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.EnemySecondary.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.IdlePrimary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.IdlePrimary.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.IdleSecondary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.IdleSecondary.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.NPCPrimary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.NPCPrimary.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.NPCSecondary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.NPCSecondary.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.PropsPrimary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.PropsPrimary.Changed"), 1);
+            CVarSetColor(CVAR_COSMETIC("Navi.PropsSecondary.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Navi.PropsSecondary.Changed"), 1);
             break;
         case GI_COSMETICS_HAIR:
-            CVarSetColor("gCosmetics.Link_Hair.Value", newColor);
-            CVarSetInteger("gCosmetics.Link_Hair.Changed", 1);
+            CVarSetColor(CVAR_COSMETIC("Link.Hair.Value"), newColor);
+            CVarSetInteger(CVAR_COSMETIC("Link.Hair.Changed"), 1);
             break;
     }
 
-    LUS::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesOnNextTick();
+    Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
     ApplyOrResetCustomGfxPatches();
 }
 
 void GameInteractor::RawAction::RandomizeCosmeticsColors(bool excludeBiddingWarColors) {
     const char* cvarsToLock[12] = { 
-        "gCosmetics.Link_KokiriTunic.Locked",
-        "gCosmetics.Link_GoronTunic.Locked",
-        "gCosmetics.Link_ZoraTunic.Locked",
-        "gCosmetics.Navi_EnemyPrimary.Locked",
-        "gCosmetics.Navi_EnemySecondary.Locked",
-        "gCosmetics.Navi_IdlePrimary.Locked",
-        "gCosmetics.Navi_IdleSecondary.Locked",
-        "gCosmetics.Navi_NPCPrimary.Locked",
-        "gCosmetics.Navi_NPCSecondary.Locked",
-        "gCosmetics.Navi_PropsPrimary.Locked",
-        "gCosmetics.Navi_PropsSecondary.Locked",
-        "gCosmetics.Link_Hair.Locked"
+        CVAR_COSMETIC("Link.KokiriTunic.Locked"),
+        CVAR_COSMETIC("Link.GoronTunic.Locked"),
+        CVAR_COSMETIC("Link.ZoraTunic.Locked"),
+        CVAR_COSMETIC("Navi.EnemyPrimary.Locked"),
+        CVAR_COSMETIC("Navi.EnemySecondary.Locked"),
+        CVAR_COSMETIC("Navi.IdlePrimary.Locked"),
+        CVAR_COSMETIC("Navi.IdleSecondary.Locked"),
+        CVAR_COSMETIC("Navi.NPCPrimary.Locked"),
+        CVAR_COSMETIC("Navi.NPCSecondary.Locked"),
+        CVAR_COSMETIC("Navi.PropsPrimary.Locked"),
+        CVAR_COSMETIC("Navi.PropsSecondary.Locked"),
+        CVAR_COSMETIC("Link.Hair.Locked")
     };
 
     if (excludeBiddingWarColors) {

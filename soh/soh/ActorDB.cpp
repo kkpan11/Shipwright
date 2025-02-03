@@ -16,7 +16,7 @@ ActorDB* ActorDB::Instance;
 #undef DEFINE_ACTOR_UNSET
 
 struct AddPair {
-    std::string name;
+    const char* name;
     ActorInit& init;
 };
 
@@ -24,7 +24,7 @@ struct AddPair {
 #define DEFINE_ACTOR(name, _1, allocType) { #name, name##_InitVars },
 #define DEFINE_ACTOR_UNSET(_0)
 
-static const std::vector<AddPair> initialActorTable = {
+static constexpr AddPair initialActorTable[] = {
 #include "tables/actor_table.h"
 };
 
@@ -33,7 +33,7 @@ static const std::vector<AddPair> initialActorTable = {
 #undef DEFINE_ACTOR
 
 // https://wiki.cloudmodding.com/oot/Actor_List_(Variables)
-static std::unordered_map<u16, const char*> actorDescriptions = {
+static constexpr std::pair<u16, const char*> actorDescriptionData[] = {
     { ACTOR_PLAYER, "Link" },
     { ACTOR_EN_TEST, "Stalfos" },
     { ACTOR_EN_GIRLA, "Shop Items" },
@@ -453,7 +453,7 @@ static std::unordered_map<u16, const char*> actorDescriptions = {
     { ACTOR_EN_KAKASI3, "Bonooru the Scarecrow" },
     { ACTOR_OCEFF_WIPE4, "Scarecrow's Song Ocarina Effect" },
     { ACTOR_EN_EG, "Void-out Trigger (Tower Collapse)" },
-    { ACTOR_BG_MENKURI_NISEKABE, "False Stone Walls (Gerudo Training Grounds)" },
+    { ACTOR_BG_MENKURI_NISEKABE, "False Stone Walls (Gerudo Training Ground)" },
     { ACTOR_EN_ZO, "Zora" },
     { ACTOR_OBJ_MAKEKINSUTA, "Skulltula Sprouting from Bean Spot" },
     { ACTOR_EN_GE3, "Gerudo Fortress Leader" },
@@ -464,6 +464,7 @@ static std::unordered_map<u16, const char*> actorDescriptions = {
     { ACTOR_BG_JYA_BLOCK, "Silver Block (Child Era)" },
     { ACTOR_OBJ_WARP2BLOCK, "Navi Infospot (Green, Time Block)" }
 };
+static std::unordered_map<u16, const char*> actorDescriptions = std::unordered_map<u16, const char*>(std::begin(actorDescriptionData), std::end(actorDescriptionData));
 
 ActorDB::ActorDB() {
     db.reserve(ACTOR_NUMBER_MAX); // reserve size for all initial entries so we don't do it for each
@@ -597,7 +598,7 @@ static ActorDBInit EnPartnerInit = {
     "En_Partner",
     "Ivan",
     ACTORCAT_ITEMACTION,
-    (ACTOR_FLAG_UPDATE_WHILE_CULLED | ACTOR_FLAG_DRAW_WHILE_CULLED | ACTOR_FLAG_DRAGGED_BY_HOOKSHOT | ACTOR_FLAG_CAN_PRESS_SWITCH),
+    (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_HOOKSHOT_PULLS_PLAYER | ACTOR_FLAG_CAN_PRESS_SWITCHES),
     OBJECT_GAMEPLAY_KEEP,
     sizeof(EnPartner),
     (ActorFunc)EnPartner_Init,

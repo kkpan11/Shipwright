@@ -7,6 +7,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/Enhancements/audio/AudioCollection.h"
 #include "soh/Enhancements/audio/AudioEditor.h"
+#include "soh/ResourceManagerHelpers.h"
 
 #define MK_ASYNC_MSG(retData, tableType, id, status) (((retData) << 24) | ((tableType) << 16) | ((id) << 8) | (status))
 #define ASYNC_TBLTYPE(v) ((u8)(v >> 16))
@@ -632,7 +633,7 @@ s32 AudioLoad_SyncInitSeqPlayerInternal(s32 playerIdx, s32 seqId, s32 arg2) {
     // Keep track of the previous sequence/scene so we don't repeat notifications
     static uint16_t previousSeqId = UINT16_MAX;
     static int16_t previousSceneNum = INT16_MAX;
-    if (CVarGetInteger("gSeqNameOverlay", 0) &&
+    if (CVarGetInteger(CVAR_AUDIO("SeqNameOverlay"), 0) &&
         playerIdx == SEQ_PLAYER_BGM_MAIN &&
         (seqId != previousSeqId || (gPlayState != NULL && gPlayState->sceneNum != previousSceneNum))) {
         
@@ -642,7 +643,7 @@ s32 AudioLoad_SyncInitSeqPlayerInternal(s32 playerIdx, s32 seqId, s32 arg2) {
         }
         const char* sequenceName = AudioCollection_GetSequenceName(seqId);
         if (sequenceName != NULL) {
-            Overlay_DisplayText_Seconds(CVarGetInteger("gSeqNameOverlayDuration", 5), sequenceName);
+            Overlay_DisplayText_Seconds(CVarGetInteger(CVAR_AUDIO("SeqNameOverlayDuration"), 5), sequenceName);
         }
     }
 }

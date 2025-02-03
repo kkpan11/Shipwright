@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include "soh/OTRGlobals.h"
+#include "soh/cvar_prefixes.h"
 #include <soh/Enhancements/item-tables/ItemTableManager.h>
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/cosmetics/CosmeticsEditor.h"
@@ -13,15 +14,12 @@
 
 #define Path _Path
 #define PATH_HACK
-#include <Utils/StringHelper.h>
+#include <utils/StringHelper.h>
 
 #include <Window.h>
 #include <Context.h>
-#ifndef IMGUI_DEFINE_MATH_OPERATORS
-#define IMGUI_DEFINE_MATH_OPERATORS
-#endif
-#include <ImGui/imgui.h>
-#include <ImGui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 #undef PATH_HACK
 #undef Path
 
@@ -36,12 +34,12 @@ extern PlayState* gPlayState;
 #include <libultraship/bridge.h>
 #include <libultraship/libultraship.h>
 
-#define CMD_REGISTER LUS::Context::GetInstance()->GetConsole()->AddCommand
+#define CMD_REGISTER Ship::Context::GetInstance()->GetConsole()->AddCommand
 // TODO: Commands should be using the output passed in.
-#define ERROR_MESSAGE std::reinterpret_pointer_cast<LUS::ConsoleWindow>(LUS::Context::GetInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))->SendErrorMessage
-#define INFO_MESSAGE std::reinterpret_pointer_cast<LUS::ConsoleWindow>(LUS::Context::GetInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))->SendInfoMessage
+#define ERROR_MESSAGE std::reinterpret_pointer_cast<Ship::ConsoleWindow>(Ship::Context::GetInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))->SendErrorMessage
+#define INFO_MESSAGE std::reinterpret_pointer_cast<Ship::ConsoleWindow>(Ship::Context::GetInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))->SendInfoMessage
 
-static bool ActorSpawnHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool ActorSpawnHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if ((args.size() != 9) && (args.size() != 3) && (args.size() != 6)) {
         ERROR_MESSAGE("Not enough arguments passed to actorspawn");
         return 1;
@@ -101,7 +99,7 @@ static bool ActorSpawnHandler(std::shared_ptr<LUS::Console> Console, const std::
     return 0;
 }
 
-static bool KillPlayerHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>&, std::string* output) {
+static bool KillPlayerHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>&, std::string* output) {
     GameInteractionEffectBase* effect = new GameInteractionEffect::SetPlayerHealth();
     dynamic_cast<ParameterizedGameInteractionEffect*>(effect)->parameters[0] = 0;
     GameInteractionEffectQueryResult result = GameInteractor::ApplyEffect(effect);
@@ -114,7 +112,7 @@ static bool KillPlayerHandler(std::shared_ptr<LUS::Console> Console, const std::
     }
 }
 
-static bool SetPlayerHealthHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool SetPlayerHealthHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -145,7 +143,7 @@ static bool SetPlayerHealthHandler(std::shared_ptr<LUS::Console> Console, const 
     }
 }
 
-static bool LoadSceneHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>&, std::string* output) {
+static bool LoadSceneHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>&, std::string* output) {
     gSaveContext.respawnFlag = 0;
     gSaveContext.seqId = 0xFF;
     gSaveContext.gameMode = 0;
@@ -153,7 +151,7 @@ static bool LoadSceneHandler(std::shared_ptr<LUS::Console> Console, const std::v
     return 0;
 }
 
-static bool RupeeHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool RupeeHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         return 1;
     }
@@ -178,7 +176,7 @@ static bool RupeeHandler(std::shared_ptr<LUS::Console> Console, const std::vecto
     return 0;
 }
 
-static bool SetPosHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string> args, std::string* output) {
+static bool SetPosHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string> args, std::string* output) {
     if (gPlayState == nullptr) {
         ERROR_MESSAGE("PlayState == nullptr");
         return 1;
@@ -205,15 +203,14 @@ static bool SetPosHandler(std::shared_ptr<LUS::Console> Console, const std::vect
     return 0;
 }
 
-static bool ResetHandler(std::shared_ptr<LUS::Console> Console, std::vector<std::string> args, std::string* output) {
-    if (gPlayState == nullptr) {
-        ERROR_MESSAGE("PlayState == nullptr");
+static bool ResetHandler(std::shared_ptr<Ship::Console> Console, std::vector<std::string> args, std::string* output) {
+    if (gGameState == nullptr) {
+        ERROR_MESSAGE("gGameState == nullptr");
         return 1;
     }
 
-    gPlayState->gameplayFrames = 0;
-    SET_NEXT_GAMESTATE(&gPlayState->state, TitleSetup_Init, GameState);
-    gPlayState->state.running = false;
+    SET_NEXT_GAMESTATE(gGameState, TitleSetup_Init, GameState);
+    gGameState->running = false;
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnExitGame>(gSaveContext.fileNum);
     return 0;
 }
@@ -225,7 +222,7 @@ const static std::map<std::string, uint16_t> ammoItems{
     { "beans", ITEM_BEAN }
 };
 
-static bool AddAmmoHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool AddAmmoHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 3) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -264,7 +261,7 @@ static bool AddAmmoHandler(std::shared_ptr<LUS::Console> Console, const std::vec
     }
 }
 
-static bool TakeAmmoHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool TakeAmmoHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 3) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -311,7 +308,7 @@ const static std::map<std::string, uint16_t> bottleItems{
     { "big_poe", ITEM_BIG_POE },           { "blue_fire", ITEM_BLUE_FIRE },   { "rutos_letter", ITEM_LETTER_RUTO },
 };
 
-static bool BottleHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool BottleHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 3) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -343,7 +340,7 @@ static bool BottleHandler(std::shared_ptr<LUS::Console> Console, const std::vect
     return 0;
 }
 
-static bool BHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool BHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -353,7 +350,7 @@ static bool BHandler(std::shared_ptr<LUS::Console> Console, const std::vector<st
     return 0;
 }
 
-static bool ItemHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool ItemHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 3) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -364,7 +361,7 @@ static bool ItemHandler(std::shared_ptr<LUS::Console> Console, const std::vector
     return 0;
 }
 
-static bool GiveItemHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string> args, std::string* output) {
+static bool GiveItemHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string> args, std::string* output) {
     if (args.size() < 3) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -385,7 +382,7 @@ static bool GiveItemHandler(std::shared_ptr<LUS::Console> Console, const std::ve
     return 0;
 }
 
-static bool EntranceHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool EntranceHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -404,9 +401,10 @@ static bool EntranceHandler(std::shared_ptr<LUS::Console> Console, const std::ve
     gPlayState->transitionTrigger = TRANS_TRIGGER_START;
     gPlayState->transitionType = TRANS_TYPE_INSTANT;
     gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
+    return 0;
 }
 
-static bool VoidHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool VoidHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (gPlayState != nullptr) {
             gSaveContext.respawn[RESPAWN_MODE_DOWN].tempSwchFlags = gPlayState->actorCtx.flags.tempSwch;
             gSaveContext.respawn[RESPAWN_MODE_DOWN].tempCollectFlags = gPlayState->actorCtx.flags.tempCollect;
@@ -422,7 +420,7 @@ static bool VoidHandler(std::shared_ptr<LUS::Console> Console, const std::vector
     return 0;
 }
 
-static bool ReloadHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool ReloadHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (gPlayState != nullptr) {
         gPlayState->nextEntranceIndex = gSaveContext.entranceIndex;
         gPlayState->transitionTrigger = TRANS_TRIGGER_START;
@@ -439,7 +437,7 @@ const static std::map<std::string, uint16_t> fw_options {
     { "clear", 0}, {"warp", 1}, {"backup", 2}
 };
 
-static bool FWHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool FWHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -471,8 +469,8 @@ static bool FWHandler(std::shared_ptr<LUS::Console> Console, const std::vector<s
                 return 0;
                 break;
             case 2: //backup
-                if (CVarGetInteger("gBetterFW", 0)) {
-                    gSaveContext.fw = gSaveContext.backupFW;
+                if (CVarGetInteger(CVAR_ENHANCEMENT("BetterFarore"), 0)) {
+                    gSaveContext.fw = gSaveContext.ship.backupFW;
                     gSaveContext.fw.set = 1;
                     INFO_MESSAGE("[SOH] Backup FW data copied! Reload scene to take effect.");
                     return 0;
@@ -491,7 +489,7 @@ static bool FWHandler(std::shared_ptr<LUS::Console> Console, const std::vector<s
     return 0;
 }
 
-static bool FileSelectHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool FileSelectHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (gPlayState != nullptr) {
         SET_NEXT_GAMESTATE(&gPlayState->state, FileChoose_Init, FileChooseContext);
         gPlayState->state.running = 0;
@@ -502,12 +500,12 @@ static bool FileSelectHandler(std::shared_ptr<LUS::Console> Console, const std::
     return 0;
 }
 
-static bool QuitHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
-    LUS::Context::GetInstance()->GetWindow()->Close();
+static bool QuitHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
+    Ship::Context::GetInstance()->GetWindow()->Close();
     return 0;
 }
 
-static bool SaveStateHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool SaveStateHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     unsigned int slot = OTRGlobals::Instance->gSaveStateMgr->GetCurrentSlot();
     const SaveStateReturn rtn = OTRGlobals::Instance->gSaveStateMgr->AddRequest({ slot, RequestType::SAVE });
 
@@ -518,10 +516,12 @@ static bool SaveStateHandler(std::shared_ptr<LUS::Console> Console, const std::v
         case SaveStateReturn::FAIL_WRONG_GAMESTATE:
             ERROR_MESSAGE("[SOH] Can not save a state outside of \"GamePlay\"");
             return 1;
+        default:
+            return 1;
     }
 }
 
-static bool LoadStateHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool LoadStateHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     unsigned int slot = OTRGlobals::Instance->gSaveStateMgr->GetCurrentSlot();
     const SaveStateReturn rtn = OTRGlobals::Instance->gSaveStateMgr->AddRequest({ slot, RequestType::LOAD });
 
@@ -538,11 +538,13 @@ static bool LoadStateHandler(std::shared_ptr<LUS::Console> Console, const std::v
         case SaveStateReturn::FAIL_WRONG_GAMESTATE:
             ERROR_MESSAGE("[SOH] Can not load a state outside of \"GamePlay\"");
             return 1;
+        default:
+            return 1;
     }
 
 }
 
-static bool StateSlotSelectHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool StateSlotSelectHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -567,7 +569,7 @@ static bool StateSlotSelectHandler(std::shared_ptr<LUS::Console> Console, const 
     return 0;
 }
 
-static bool InvisibleHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool InvisibleHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -594,7 +596,7 @@ static bool InvisibleHandler(std::shared_ptr<LUS::Console> Console, const std::v
     }
 }
 
-static bool GiantLinkHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool GiantLinkHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -622,7 +624,7 @@ static bool GiantLinkHandler(std::shared_ptr<LUS::Console> Console, const std::v
     }
 }
 
-static bool MinishLinkHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool MinishLinkHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -650,7 +652,7 @@ static bool MinishLinkHandler(std::shared_ptr<LUS::Console> Console, const std::
     }
 }
 
-static bool AddHeartContainerHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool AddHeartContainerHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -681,7 +683,7 @@ static bool AddHeartContainerHandler(std::shared_ptr<LUS::Console> Console, cons
     }
 }
 
-static bool RemoveHeartContainerHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool RemoveHeartContainerHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -712,7 +714,7 @@ static bool RemoveHeartContainerHandler(std::shared_ptr<LUS::Console> Console, c
     }
 }
 
-static bool GravityHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool GravityHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -721,7 +723,7 @@ static bool GravityHandler(std::shared_ptr<LUS::Console> Console, const std::vec
     GameInteractionEffectBase* effect = new GameInteractionEffect::ModifyGravity();
 
     try {
-        dynamic_cast<ParameterizedGameInteractionEffect*>(effect)->parameters[0] = LUS::Math::clamp(std::stoi(args[1], nullptr, 10), GI_GRAVITY_LEVEL_LIGHT, GI_GRAVITY_LEVEL_HEAVY);
+        dynamic_cast<ParameterizedGameInteractionEffect*>(effect)->parameters[0] = Ship::Math::clamp(std::stoi(args[1], nullptr, 10), GI_GRAVITY_LEVEL_LIGHT, GI_GRAVITY_LEVEL_HEAVY);
     } catch (std::invalid_argument const& ex) {
         ERROR_MESSAGE("[SOH] Gravity value must be a number.");
         return 1;
@@ -737,7 +739,7 @@ static bool GravityHandler(std::shared_ptr<LUS::Console> Console, const std::vec
     }
 }
 
-static bool NoUIHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool NoUIHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -765,7 +767,7 @@ static bool NoUIHandler(std::shared_ptr<LUS::Console> Console, const std::vector
     }
 }
 
-static bool FreezeHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool FreezeHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     GameInteractionEffectBase* effect = new GameInteractionEffect::FreezePlayer();
     GameInteractionEffectQueryResult result = GameInteractor::ApplyEffect(effect);
 
@@ -778,7 +780,7 @@ static bool FreezeHandler(std::shared_ptr<LUS::Console> Console, const std::vect
     }
 }
 
-static bool DefenseModifierHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool DefenseModifierHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -802,7 +804,7 @@ static bool DefenseModifierHandler(std::shared_ptr<LUS::Console> Console, const 
     }
 }
 
-static bool DamageHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool DamageHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -832,7 +834,7 @@ static bool DamageHandler(std::shared_ptr<LUS::Console> Console, const std::vect
     }
 }
 
-static bool HealHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool HealHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -862,7 +864,7 @@ static bool HealHandler(std::shared_ptr<LUS::Console> Console, const std::vector
     }
 }
 
-static bool FillMagicHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool FillMagicHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     GameInteractionEffectBase* effect = new GameInteractionEffect::FillMagic();
     GameInteractionEffectQueryResult result = GameInteractor::ApplyEffect(effect);
 
@@ -875,7 +877,7 @@ static bool FillMagicHandler(std::shared_ptr<LUS::Console> Console, const std::v
     }
 }
 
-static bool EmptyMagicHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool EmptyMagicHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     GameInteractionEffectBase* effect = new GameInteractionEffect::EmptyMagic();
     GameInteractionEffectQueryResult result = GameInteractor::ApplyEffect(effect);
 
@@ -888,7 +890,7 @@ static bool EmptyMagicHandler(std::shared_ptr<LUS::Console> Console, const std::
     }
 }
 
-static bool NoZHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool NoZHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
      if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -916,7 +918,7 @@ static bool NoZHandler(std::shared_ptr<LUS::Console> Console, const std::vector<
     }
 }
 
-static bool OneHitKOHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool OneHitKOHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -944,7 +946,7 @@ static bool OneHitKOHandler(std::shared_ptr<LUS::Console> Console, const std::ve
     }
 }
 
-static bool PacifistHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool PacifistHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -972,7 +974,7 @@ static bool PacifistHandler(std::shared_ptr<LUS::Console> Console, const std::ve
     }
 }
 
-static bool PaperLinkHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool PaperLinkHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1001,7 +1003,7 @@ static bool PaperLinkHandler(std::shared_ptr<LUS::Console> Console, const std::v
     }
 }
 
-static bool RainstormHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool RainstormHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1029,7 +1031,7 @@ static bool RainstormHandler(std::shared_ptr<LUS::Console> Console, const std::v
     }
 }
 
-static bool ReverseControlsHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool ReverseControlsHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1058,7 +1060,7 @@ static bool ReverseControlsHandler(std::shared_ptr<LUS::Console> Console, const 
     }
 }
 
-static bool UpdateRupeesHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool UpdateRupeesHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1082,7 +1084,7 @@ static bool UpdateRupeesHandler(std::shared_ptr<LUS::Console> Console, const std
     }
 }
 
-static bool SpeedModifierHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool SpeedModifierHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1112,7 +1114,7 @@ const static std::map<std::string, uint16_t> boots {
     { "hover", EQUIP_VALUE_BOOTS_HOVER },
 };
 
-static bool BootsHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool BootsHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1143,7 +1145,7 @@ const static std::map<std::string, uint16_t> shields {
     { "mirror", ITEM_SHIELD_MIRROR },
 };
 
-static bool GiveShieldHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool GiveShieldHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1168,7 +1170,7 @@ static bool GiveShieldHandler(std::shared_ptr<LUS::Console> Console, const std::
     }
 }
 
-static bool TakeShieldHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool TakeShieldHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1193,7 +1195,7 @@ static bool TakeShieldHandler(std::shared_ptr<LUS::Console> Console, const std::
     }
 }
 
-static bool KnockbackHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool KnockbackHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
@@ -1223,7 +1225,7 @@ static bool KnockbackHandler(std::shared_ptr<LUS::Console> Console, const std::v
     }
 }
 
-static bool ElectrocuteHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool ElectrocuteHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     GameInteractionEffectBase* effect = new GameInteractionEffect::ElectrocutePlayer();
     GameInteractionEffectQueryResult result = GameInteractor::ApplyEffect(effect);
 
@@ -1236,7 +1238,7 @@ static bool ElectrocuteHandler(std::shared_ptr<LUS::Console> Console, const std:
     }
 }
 
-static bool BurnHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool BurnHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     GameInteractionEffectBase* effect = new GameInteractionEffect::BurnPlayer();
     GameInteractionEffectQueryResult result = GameInteractor::ApplyEffect(effect);
 
@@ -1249,7 +1251,7 @@ static bool BurnHandler(std::shared_ptr<LUS::Console> Console, const std::vector
     }
 }
 
-static bool CuccoStormHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool CuccoStormHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     GameInteractionEffectQueryResult result = GameInteractor::RawAction::SpawnActor(ACTOR_EN_NIW, 0);
 
     if (result == GameInteractionEffectQueryResult::Possible) {
@@ -1261,7 +1263,7 @@ static bool CuccoStormHandler(std::shared_ptr<LUS::Console> Console, const std::
     }
 }
 
-static bool GenerateRandoHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static bool GenerateRandoHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() == 1) {
         if (GenerateRandomizer()) {
             return 0;
@@ -1289,16 +1291,62 @@ static bool GenerateRandoHandler(std::shared_ptr<LUS::Console> Console, const st
     return 1;
 }
 
-static bool CosmeticsHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static constexpr std::array<std::pair<const char*, CosmeticGroup>, COSMETICS_GROUP_MAX> cosmetic_groups = {{
+    {"link", COSMETICS_GROUP_LINK},
+    {"mirror_shield", COSMETICS_GROUP_MIRRORSHIELD},
+    {"swords", COSMETICS_GROUP_SWORDS},
+    {"gloves", COSMETICS_GROUP_GLOVES},
+    {"equipment", COSMETICS_GROUP_EQUIPMENT},
+    {"keyring", COSMETICS_GROUP_KEYRING},
+    {"small_keys", COSMETICS_GROUP_SMALL_KEYS },
+    {"boss_keys", COSMETICS_GROUP_BOSS_KEYS },
+    {"consumable", COSMETICS_GROUP_CONSUMABLE},
+    {"hud", COSMETICS_GROUP_HUD},
+    {"kaleido", COSMETICS_GROUP_KALEIDO},
+    {"title", COSMETICS_GROUP_TITLE},
+    {"npc", COSMETICS_GROUP_NPC},
+    {"world", COSMETICS_GROUP_WORLD},
+    {"magic", COSMETICS_GROUP_MAGIC},
+    {"arrows", COSMETICS_GROUP_ARROWS},
+    {"spin_attack", COSMETICS_GROUP_SPIN_ATTACK},
+    {"trials", COSMETICS_GROUP_TRAILS},
+    {"navi", COSMETICS_GROUP_NAVI},
+    {"ivan", COSMETICS_GROUP_IVAN},
+    {"message", COSMETICS_GROUP_MESSAGE},
+}};
+
+static bool CosmeticsHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
     }
 
     if (args[1].compare("reset") == 0) {
-        CosmeticsEditor_ResetAll();
+        if (args.size() == 2) {
+            CosmeticsEditor_ResetAll();
+        } else {
+            for (const auto& [key, value] : cosmetic_groups) {
+                if (args[2].compare(key) == 0) {
+                    CosmeticsEditor_ResetGroup(value);
+                    return 0;
+                }
+            }
+            ERROR_MESSAGE("[SOH] Invalid argument passed, unrecognized group name");
+            return 1;
+        }
     } else if (args[1].compare("randomize") == 0) {
-        CosmeticsEditor_RandomizeAll();
+        if (args.size() == 2) {
+            CosmeticsEditor_RandomizeAll();
+        } else {
+            for (const auto& [key, value] : cosmetic_groups) {
+                if (args[2].compare(key) == 0) {
+                    CosmeticsEditor_RandomizeGroup(value);
+                    return 0;
+                }
+            }
+            ERROR_MESSAGE("[SOH] Invalid argument passed, unrecognized group name");
+            return 1;
+        }
     } else {
         ERROR_MESSAGE("[SOH] Invalid argument passed, must be 'reset' or 'randomize'");
         return 1;
@@ -1307,16 +1355,50 @@ static bool CosmeticsHandler(std::shared_ptr<LUS::Console> Console, const std::v
     return 0;
 }
 
-static bool SfxHandler(std::shared_ptr<LUS::Console> Console, const std::vector<std::string>& args, std::string* output) {
+static std::map<std::string, SeqType> sfx_groups = {
+    {"bgm", SEQ_BGM_WORLD},
+    {"fanfares", SEQ_FANFARE},
+    {"events", SEQ_BGM_EVENT},
+    {"battle", SEQ_BGM_BATTLE},
+    {"ocarina", SEQ_OCARINA},
+    {"instruments", SEQ_INSTRUMENT},
+    {"sfx", SEQ_SFX},
+    {"voices", SEQ_VOICE},
+    {"custom", SEQ_BGM_CUSTOM},
+};
+
+static bool SfxHandler(std::shared_ptr<Ship::Console> Console, const std::vector<std::string>& args, std::string* output) {
     if (args.size() < 2) {
         ERROR_MESSAGE("[SOH] Unexpected arguments passed");
         return 1;
     }
 
     if (args[1].compare("reset") == 0) {
-        AudioEditor_ResetAll();
+        if (args.size() == 2) {
+            AudioEditor_ResetAll();
+        } else {
+            for (const auto& [key, value] : sfx_groups) {
+                if (args[2].compare(key) == 0) {
+                    AudioEditor_ResetGroup(value);
+                    return 0;
+                }
+            }
+            ERROR_MESSAGE("[SOH] Invalid argument passed, unrecognized group name");
+            return 1;
+        }
     } else if (args[1].compare("randomize") == 0) {
-        AudioEditor_RandomizeAll();
+        if (args.size() == 2) {
+            AudioEditor_RandomizeAll();
+        } else {
+            for (const auto& [key, value] : sfx_groups) {
+                if (args[2].compare(key) == 0) {
+                    AudioEditor_RandomizeGroup(value);
+                    return 0;
+                }
+            }
+            ERROR_MESSAGE("[SOH] Invalid argument passed, unrecognized group name");
+            return 1;
+        }
     } else {
         ERROR_MESSAGE("[SOH] Invalid argument passed, must be 'reset' or 'randomize'");
         return 1;
@@ -1335,17 +1417,17 @@ void DebugConsole_Init(void) {
     CMD_REGISTER("save_state", {SaveStateHandler, "Save a state."});
     CMD_REGISTER("load_state", {LoadStateHandler, "Load a state."});
     CMD_REGISTER("set_slot", {StateSlotSelectHandler, "Selects a SaveState slot", {
-            {"Slot number", LUS::ArgumentType::NUMBER,}
+            {"Slot number", Ship::ArgumentType::NUMBER,}
     }});
 
     // Map & Location
     CMD_REGISTER("void", {VoidHandler, "Voids out of the current map."});
     CMD_REGISTER("reload", {ReloadHandler, "Reloads the current map."});
     CMD_REGISTER("fw", {FWHandler, "Spawns the player where Farore's Wind is set.", {
-            {"clear|warp|backup", LUS::ArgumentType::TEXT}
+            {"clear|warp|backup", Ship::ArgumentType::TEXT}
     }});
     CMD_REGISTER("entrance", {EntranceHandler, "Sends player to the entered entrance (hex)", {
-            {"entrance", LUS::ArgumentType::NUMBER}
+            {"entrance", Ship::ArgumentType::NUMBER}
     }});
 
     // Gameplay
@@ -1354,64 +1436,64 @@ void DebugConsole_Init(void) {
     CMD_REGISTER("map", {LoadSceneHandler, "Load up kak?"});
 
     CMD_REGISTER("rupee", {RupeeHandler, "Set your rupee counter.", {
-            {"amount", LUS::ArgumentType::NUMBER}
+            {"amount", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("bItem", {BHandler, "Set an item to the B button.", {
-            {"Item ID", LUS::ArgumentType::NUMBER}
+            {"Item ID", Ship::ArgumentType::NUMBER}
     }});
 
-    CMD_REGISTER("spawn", { ActorSpawnHandler, "Spawn an actor.", { { "actor name/id", LUS::ArgumentType::NUMBER }, // TODO there should be an actor_id arg type
-                                                                  {"data", LUS::ArgumentType::NUMBER},
-                                                                  {"x", LUS::ArgumentType::NUMBER, true},
-                                                                  {"y", LUS::ArgumentType::NUMBER, true},
-                                                                  {"z", LUS::ArgumentType::NUMBER, true},
-                                                                  {"rx", LUS::ArgumentType::NUMBER, true},
-                                                                  {"ry", LUS::ArgumentType::NUMBER, true},
-                                                                  {"rz", LUS::ArgumentType::NUMBER, true}
+    CMD_REGISTER("spawn", { ActorSpawnHandler, "Spawn an actor.", { { "actor name/id", Ship::ArgumentType::NUMBER }, // TODO there should be an actor_id arg type
+                                                                  {"data", Ship::ArgumentType::NUMBER},
+                                                                  {"x", Ship::ArgumentType::NUMBER, true},
+                                                                  {"y", Ship::ArgumentType::NUMBER, true},
+                                                                  {"z", Ship::ArgumentType::NUMBER, true},
+                                                                  {"rx", Ship::ArgumentType::NUMBER, true},
+                                                                  {"ry", Ship::ArgumentType::NUMBER, true},
+                                                                  {"rz", Ship::ArgumentType::NUMBER, true}
     }});
 
     CMD_REGISTER("pos", {SetPosHandler, "Sets the position of the player.", {
-            {"x", LUS::ArgumentType::NUMBER, true},
-            {"y", LUS::ArgumentType::NUMBER, true},
-            {"z", LUS::ArgumentType::NUMBER, true}
+            {"x", Ship::ArgumentType::NUMBER, true},
+            {"y", Ship::ArgumentType::NUMBER, true},
+            {"z", Ship::ArgumentType::NUMBER, true}
     }});
 
     CMD_REGISTER("addammo", {AddAmmoHandler, "Adds ammo of an item.", {
-            {"sticks|nuts|bombs|seeds|arrows|bombchus|beans", LUS::ArgumentType::TEXT},
-            {"count", LUS::ArgumentType::NUMBER}
+            {"sticks|nuts|bombs|seeds|arrows|bombchus|beans", Ship::ArgumentType::TEXT},
+            {"count", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("takeammo", {TakeAmmoHandler, "Removes ammo of an item.", {
-            {"sticks|nuts|bombs|seeds|arrows|bombchus|beans", LUS::ArgumentType::TEXT},
-            {"count", LUS::ArgumentType::NUMBER}
+            {"sticks|nuts|bombs|seeds|arrows|bombchus|beans", Ship::ArgumentType::TEXT},
+            {"count", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("bottle", {BottleHandler, "Changes item in a bottle slot.", {
-            {"item", LUS::ArgumentType::TEXT},
-            {"slot", LUS::ArgumentType::NUMBER}
+            {"item", Ship::ArgumentType::TEXT},
+            {"slot", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("give_item", {GiveItemHandler, "Gives an item to the player as if it was given from an actor", {
-            {"vanilla|randomizer", LUS::ArgumentType::TEXT},
-            {"giveItemID", LUS::ArgumentType::NUMBER}
+            {"vanilla|randomizer", Ship::ArgumentType::TEXT},
+            {"giveItemID", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("item", {ItemHandler, "Sets item ID in arg 1 into slot arg 2. No boundary checks. Use with caution.", {
-            {"slot", LUS::ArgumentType::NUMBER},
-            {"item id", LUS::ArgumentType::NUMBER}
+            {"slot", Ship::ArgumentType::NUMBER},
+            {"item id", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("invisible", {InvisibleHandler, "Activate Link's Elvish cloak, making him appear invisible.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("giant_link", {GiantLinkHandler, "Turn Link into a giant Lonky boi.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("minish_link", {MinishLinkHandler, "Turn Link into a minish boi.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("add_heart_container",
@@ -1421,25 +1503,25 @@ void DebugConsole_Init(void) {
                  {RemoveHeartContainerHandler, "Remove a heart from Link. The minimal amount of hearts is 3."});
 
     CMD_REGISTER("gravity", {GravityHandler, "Set gravity level.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("no_ui", {NoUIHandler, "Disables the UI.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("freeze", {FreezeHandler, "Freezes Link in place"});
 
     CMD_REGISTER("defense_modifier", {DefenseModifierHandler, "Sets the defense modifier.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("damage", {DamageHandler, "Deal damage to Link.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("heal", {HealHandler, "Heals Link.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("fill_magic", {FillMagicHandler, "Fills magic."});
@@ -1447,50 +1529,50 @@ void DebugConsole_Init(void) {
     CMD_REGISTER("empty_magic", {EmptyMagicHandler, "Empties magic."});
 
     CMD_REGISTER("no_z", {NoZHandler, "Disables Z-button presses.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("ohko", {OneHitKOHandler,
                           "Activates one hit KO. Any damage kills Link and he cannot gain health in this mode.", {
-                                  {"value", LUS::ArgumentType::NUMBER}
+                                  {"value", Ship::ArgumentType::NUMBER}
                           }});
 
     CMD_REGISTER("pacifist", {PacifistHandler, "Activates pacifist mode. Prevents Link from using his weapon.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("paper_link", {PaperLinkHandler, "Link but made out of paper.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("rainstorm", {RainstormHandler, "Activates rainstorm."});
 
     CMD_REGISTER("reverse_controls", {ReverseControlsHandler, "Reverses the controls.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("update_rupees", {UpdateRupeesHandler, "Adds rupees.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("speed_modifier", {SpeedModifierHandler, "Sets the speed modifier.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("boots", {BootsHandler, "Activates boots.", {
-            {"kokiri|iron|hover", LUS::ArgumentType::TEXT},
+            {"kokiri|iron|hover", Ship::ArgumentType::TEXT},
     }});
 
     CMD_REGISTER("giveshield", {GiveShieldHandler, "Gives a shield and equips it when Link is the right age for it.", {
-            {"deku|hylian|mirror", LUS::ArgumentType::TEXT},
+            {"deku|hylian|mirror", Ship::ArgumentType::TEXT},
     }});
 
     CMD_REGISTER("takeshield", {TakeShieldHandler, "Takes a shield and unequips it if Link is wearing it.", {
-            {"deku|hylian|mirror", LUS::ArgumentType::TEXT},
+            {"deku|hylian|mirror", Ship::ArgumentType::TEXT},
     }});
 
     CMD_REGISTER("knockback", {KnockbackHandler, "Knocks Link back.", {
-            {"value", LUS::ArgumentType::NUMBER}
+            {"value", Ship::ArgumentType::NUMBER}
     }});
 
     CMD_REGISTER("electrocute", {ElectrocuteHandler, "Electrocutes Link."});
@@ -1500,18 +1582,19 @@ void DebugConsole_Init(void) {
     CMD_REGISTER("cucco_storm", {CuccoStormHandler, "Cucco Storm"});
 
     CMD_REGISTER("gen_rando", {GenerateRandoHandler, "Generate a randomizer seed", {
-            {"seed|count", LUS::ArgumentType::NUMBER, true},
-            {"testing", LUS::ArgumentType::NUMBER, true},
+            {"seed|count", Ship::ArgumentType::NUMBER, true},
+            {"testing", Ship::ArgumentType::NUMBER, true},
     }});
 
     CMD_REGISTER("cosmetics", {CosmeticsHandler, "Change cosmetics.", {
-            {"reset|randomize", LUS::ArgumentType::TEXT},
+            {"reset|randomize", Ship::ArgumentType::TEXT},
+            {"group name", Ship::ArgumentType::TEXT, true},
     }});
 
     CMD_REGISTER("sfx", {SfxHandler, "Change SFX.", {
-            {"reset|randomize", LUS::ArgumentType::TEXT},
+            {"reset|randomize", Ship::ArgumentType::TEXT},
+            {"group_name", Ship::ArgumentType::TEXT, true},
     }});
 
-    CVarSave();
-    CVarLoad();
+    Ship::Context::GetInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
 }

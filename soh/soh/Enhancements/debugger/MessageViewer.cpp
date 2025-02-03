@@ -1,11 +1,12 @@
 #include "MessageViewer.h"
 
-#include <soh/UIWidgets.hpp>
+#include <soh/SohGui/UIWidgets.hpp>
 #include <textures/message_static/message_static.h>
 
 #include "../custom-message/CustomMessageManager.h"
 #include "functions.h"
 #include "macros.h"
+#include "soh/cvar_prefixes.h"
 #include "message_data_static.h"
 #include "variables.h"
 #include "soh/util.h"
@@ -20,11 +21,6 @@ void MessageViewer::InitElement() {
 }
 
 void MessageViewer::DrawElement() {
-    ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Custom Message Debugger", &mIsVisible, ImGuiWindowFlags_NoFocusOnAppearing)) {
-        ImGui::End();
-        return;
-    }
     ImGui::Text("Table ID");
     ImGui::SameLine();
     ImGui::InputText("##TableID", mTableIdBuf, MAX_STRING_SIZE, ImGuiInputTextFlags_CallbackCharFilter, UIWidgets::TextFilters::FilterAlphaNum);
@@ -74,7 +70,6 @@ void MessageViewer::DrawElement() {
     if (ImGui::Button("Display Message##CustomMessage")) {
         mDisplayCustomMessageClicked = true;
     }
-    ImGui::End();
     // ReSharper restore CppDFAUnreachableCode
 }
 
@@ -121,7 +116,7 @@ void FindMessage(PlayState* play, const uint16_t textId, const uint8_t language)
     Font* font;
     u16 bufferId = textId;
     // Use the better owl message if better owl is enabled
-    if (CVarGetInteger("gBetterOwl", 0) != 0 && (bufferId == 0x2066 || bufferId == 0x607B ||
+    if (CVarGetInteger(CVAR_ENHANCEMENT("BetterOwl"), 0) != 0 && (bufferId == 0x2066 || bufferId == 0x607B ||
         bufferId == 0x10C2 || bufferId == 0x10C6 || bufferId == 0x206A))
     {
         bufferId = 0x71B3;
@@ -179,15 +174,13 @@ void MessageDebug_StartTextBox(const char* tableId, uint16_t textId, uint8_t lan
     PlayState* play = gPlayState;
     static int16_t messageStaticIndices[] = { 0, 1, 3, 2 };
     const auto player = GET_PLAYER(gPlayState);
-    player->actor.flags |= ACTOR_FLAG_PLAYER_TALKED_TO;
+    player->actor.flags |= ACTOR_FLAG_TALK;
     MessageContext* msgCtx = &play->msgCtx;
     msgCtx->ocarinaAction = 0xFFFF;
     Font* font = &msgCtx->font;
     sMessageHasSetSfx = 0;
     for (u32 i = 0; i < FONT_CHAR_TEX_SIZE * 120; i += FONT_CHAR_TEX_SIZE) {
-        if (&font->charTexBuf[i] != nullptr) {
-            gSPInvalidateTexCache(play->state.gfxCtx->polyOpa.p++, reinterpret_cast<uintptr_t>(&font->charTexBuf[i]));
-        }
+        gSPInvalidateTexCache(play->state.gfxCtx->polyOpa.p++, reinterpret_cast<uintptr_t>(&font->charTexBuf[i]));
     }
     R_TEXT_CHAR_SCALE = 75;
     R_TEXT_LINE_SPACING = 12;
@@ -204,16 +197,7 @@ void MessageDebug_StartTextBox(const char* tableId, uint16_t textId, uint8_t lan
         const CustomMessage messageEntry = CustomMessageManager::Instance->RetrieveMessage(tableId, textId);
         font->charTexBuf[0] = (messageEntry.GetTextBoxType() << 4) | messageEntry.GetTextBoxPosition();
         switch (language) {
-            case LANGUAGE_FRA:
-                font->msgLength = SohUtils::CopyStringToCharBuffer(buffer, messageEntry.GetFrench(), maxBufferSize);
-                break;
-            case LANGUAGE_GER:
-                font->msgLength = SohUtils::CopyStringToCharBuffer(buffer, messageEntry.GetGerman(), maxBufferSize);
-                break;
-            case LANGUAGE_ENG:
-            default:
-                font->msgLength = SohUtils::CopyStringToCharBuffer(buffer, messageEntry.GetEnglish(), maxBufferSize);
-                break;
+            font->msgLength = SohUtils::CopyStringToCharBuffer(buffer, messageEntry.GetForLanguage(language), maxBufferSize);
         }
         msgCtx->msgLength = static_cast<int32_t>(font->msgLength);
     }

@@ -1,7 +1,8 @@
 #include "global.h"
 #include "vt.h"
 
-#include <soh/OTRGlobals.h>
+#include "soh/OTRGlobals.h"
+#include "soh/ResourceManagerHelpers.h"
 #include <assert.h>
 
 #define SS_NULL 0xFFFF
@@ -398,7 +399,7 @@ s32 CollisionPoly_LineVsPoly(CollisionPoly* poly, Vec3s* vtxList, Vec3f* posA, V
         (poly->normal.x * posB->x + poly->normal.y * posB->y + poly->normal.z * posB->z) * COLPOLY_NORMAL_FRAC +
         plane.originDist;
 
-#ifdef __WIIU__
+#if defined(__SWITCH__) || defined(__WIIU__)
     // on some platforms this ends up as very small numbers due to rounding issues
     if (IS_ZERO(planeDistA)) {
         planeDistA = 0.0f;
@@ -1902,7 +1903,7 @@ s32 BgCheck_CheckWallImpl(CollisionContext* colCtx, u16 xpFlags, Vec3f* posResul
     s32 bgId2;
     f32 nx, ny, nz; // unit normal of polygon
 
-    if (CVarGetInteger("gNoClip", 0) && actor != NULL && actor->id == ACTOR_PLAYER) {
+    if (CVarGetInteger(CVAR_CHEAT("NoClip"), 0) && actor != NULL && actor->id == ACTOR_PLAYER) {
         return false;
     }
 
@@ -2953,7 +2954,7 @@ void func_8003F8EC(PlayState* play, DynaCollisionContext* dyna, Actor* actor) {
         if ((dyna->bgActorFlags[i] & 1)) {
             dynaActor = DynaPoly_GetActor(&play->colCtx, i);
             if (dynaActor != NULL && &dynaActor->actor == actor) {
-                func_800434A0((DynaPolyActor*)actor);
+                DynaPolyActor_UnsetAllInteractFlags((DynaPolyActor*)actor);
                 return;
             }
         }
@@ -4025,7 +4026,7 @@ u32 func_80041D94(CollisionContext* colCtx, CollisionPoly* poly, s32 bgId) {
  * SurfaceType Get Wall Flags
  */
 s32 func_80041DB8(CollisionContext* colCtx, CollisionPoly* poly, s32 bgId) {
-    if (CVarGetInteger("gClimbEverything", 0) != 0) {
+    if (CVarGetInteger(CVAR_CHEAT("ClimbEverything"), 0) != 0) {
         return (1 << 3) | D_80119D90[func_80041D94(colCtx, poly, bgId)];
     } else {
         return D_80119D90[func_80041D94(colCtx, poly, bgId)];
@@ -4122,7 +4123,7 @@ u32 SurfaceType_GetEcho(CollisionContext* colCtx, CollisionPoly* poly, s32 bgId)
  * SurfaceType Is Hookshot Surface
  */
 u32 SurfaceType_IsHookshotSurface(CollisionContext* colCtx, CollisionPoly* poly, s32 bgId) {
-    return CVarGetInteger("gHookshotEverything", 0) || SurfaceType_GetData(colCtx, poly, bgId, 1) >> 17 & 1;
+    return CVarGetInteger(CVAR_CHEAT("HookshotEverything"), 0) || SurfaceType_GetData(colCtx, poly, bgId, 1) >> 17 & 1;
 }
 
 /**

@@ -260,9 +260,9 @@ void func_808B4194(BgSpot15Rrbox* this, PlayState* play) {
     s32 approxFResult;
     Actor* actor = &this->dyna.actor;
 
-    this->unk_174 = this->unk_174 + ((CVarGetInteger("gFasterBlockPush", 0) / 2) * 0.5) + 0.5f;
+    this->unk_174 = this->unk_174 + ((CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) / 2) * 0.5) + 0.5f;
 
-    this->unk_174 = CLAMP_MAX(this->unk_174, 2.0f + (CVarGetInteger("gFasterBlockPush", 0) * 0.5));
+    this->unk_174 = CLAMP_MAX(this->unk_174, 2.0f + (CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) * 0.5));
 
     approxFResult = Math_StepToF(&this->unk_178, 20.0f, this->unk_174);
 
@@ -286,7 +286,7 @@ void func_808B4194(BgSpot15Rrbox* this, PlayState* play) {
             Audio_PlayActorSound2(actor, NA_SE_EV_WOOD_BOUND);
         }
         if (func_808B3A40(this, play)) {
-            func_80078884(NA_SE_SY_CORRECT_CHIME);
+            Sfx_PlaySfxCentered(NA_SE_SY_CORRECT_CHIME);
         }
         actor->home.pos.x = actor->world.pos.x;
         actor->home.pos.z = actor->world.pos.z;
@@ -294,7 +294,7 @@ void func_808B4194(BgSpot15Rrbox* this, PlayState* play) {
         this->dyna.unk_150 = 0.0f;
         this->unk_178 = 0.0f;
         this->unk_174 = 0.0f;
-        this->unk_168 = 10 - ((CVarGetInteger("gFasterBlockPush", 0) * 3) / 2);
+        this->unk_168 = 10 - ((CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) * 3) / 2);
         func_808B4084(this, play);
     }
     Audio_PlayActorSound2(actor, NA_SE_EV_ROCK_SLIDE - SFX_FLAG);
@@ -319,7 +319,7 @@ void func_808B43D0(BgSpot15Rrbox* this, PlayState* play) {
         player->stateFlags2 &= ~PLAYER_STATE2_MOVING_DYNAPOLY;
     }
 
-    Actor_MoveForward(actor);
+    Actor_MoveXZGravity(actor);
 
     if (actor->world.pos.y <= BGCHECK_Y_MIN + 10.0f) {
         // "Lon Lon wooden crate fell too much"
